@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DeltaForge | Options Backtesting Terminal</title>
+    <link rel="stylesheet" href="index.css?v=6">
+    <!-- Chart.js for data visualization -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Lucide Icons for premium iconography -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+
+    <!-- Loading Screen Overlay -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="spinner"></div>
+        <div class="loading-text" id="loadingText">Valuing Option Contracts...</div>
+        <div class="loading-sub" id="loadingSub">Running Black-Scholes equations for 25 intraday ticks...</div>
+    </div>
+
+    <!-- Core App Container -->
+    <div class="app-container">
+        
+        <!-- Header -->
+        <header class="glass-panel">
+            <div class="logo-section">
+                <h1>
+                    <i data-lucide="activity" class="logo-icon"></i>
+                    <span>DeltaForge <span style="font-weight: 300; font-size: 16px; opacity: 0.7; letter-spacing: 1px;">TERMINAL</span></span>
+                </h1>
+            </div>
+            
+            <!-- Index Status Tickers -->
+            <div class="market-status">
+                <div class="index-pill" data-index="NIFTY">
+                    <span class="status-dot"></span>
+                    <span>NIFTY 50: </span>
+                    <strong id="tickerNifty">23,450.25</strong>
+                </div>
+                <div class="index-pill" data-index="BANKNIFTY">
+                    <span class="status-dot"></span>
+                    <span>BANK NIFTY: </span>
+                    <strong id="tickerBankNifty">51,280.90</strong>
+                </div>
+            </div>
+        </header>
+
+        <!-- Sidebar (Left Column) -->
+        <aside class="config-sidebar">
+            
+            <!-- 1. Index & Date Parameters -->
+            <div class="glass-panel" style="padding: 20px;">
+                <div class="section-title">
+                    <span>Backtest Parameters</span>
+                    <i data-lucide="sliders" style="width: 18px; height: 18px; color: var(--accent-theme);"></i>
+                </div>
+                
+                <div class="form-group">
+                    <label>Data Feed Source</label>
+                    <div class="pill-toggle" id="feedToggle">
+                        <button class="pill-btn active" data-value="REAL">Real Historical</button>
+                        <button class="pill-btn" data-value="MOCK">Simulated (GBM)</button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Underlying Index</label>
+                    <div class="pill-toggle" id="indexToggle">
+                        <button class="pill-btn active" data-value="NIFTY">NIFTY 50</button>
+                        <button class="pill-btn" data-value="BANKNIFTY">BANK NIFTY</button>
+                    </div>
+                </div>
+
+                <div class="input-row">
+                    <div class="form-group">
+                        <label>Start Date</label>
+                        <input type="date" id="startDate" value="2024-01-01" min="2024-01-01" max="2026-06-01">
+                    </div>
+                    <div class="form-group">
+                        <label>End Date</label>
+                        <input type="date" id="endDate" value="2024-06-30" min="2024-01-01" max="2026-06-01">
+                    </div>
+                </div>
+
+                <div class="input-row">
+                    <div class="form-group">
+                        <label>Entry Time (IST)</label>
+                        <select id="entryTime">
+                            <option value="09:20" selected>09:20 AM</option>
+                            <option value="09:30">09:30 AM</option>
+                            <option value="10:00">10:00 AM</option>
+                            <option value="11:00">11:00 AM</option>
+                            <option value="13:00">01:00 PM</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Exit Time (IST)</label>
+                        <select id="exitTime">
+                            <option value="15:00">03:00 PM</option>
+                            <option value="15:15" selected>03:15 PM</option>
+                            <option value="15:25">03:25 PM</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="input-row">
+                    <div class="form-group">
+                        <label>Signal Type</label>
+                        <select id="signalMode">
+                            <option value="ALWAYS" selected>Always Active</option>
+                            <option value="EMA_CROSS_DAILY">Daily EMA Crossover</option>
+                            <option value="EMA_CROSS_15MIN">15-Min EMA Crossover</option>
+                        </select>
+                    </div>
+                    <div class="form-group" id="emaPeriodGroup" style="display: none;">
+                        <div class="input-row" style="margin-bottom: 0;">
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label>EMA Period</label>
+                                <input type="number" id="emaPeriod" value="20" min="2" max="200">
+                            </div>
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label>Signal Strike</label>
+                                <select id="emaStrike">
+                                    <option value="ATM" selected>ATM</option>
+                                    <option value="ITM1">ITM 1</option>
+                                    <option value="ITM2">ITM 2</option>
+                                    <option value="ITM3">ITM 3</option>
+                                    <option value="OTM1">OTM 1</option>
+                                    <option value="OTM2">OTM 2</option>
+                                    <option value="OTM3">OTM 3</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group" style="margin-top: 12px; margin-bottom: 0;">
+                            <label>Signal Quantity (Lots)</label>
+                            <div class="lot-counter">
+                                <button type="button" class="counter-btn" id="decLotsBtn">-</button>
+                                <input type="number" id="emaLots" value="1" min="1" max="100" readonly style="text-align: center; font-weight: 700; border: none; background: transparent; padding: 0; margin: 0; outline: none;">
+                                <button type="button" class="counter-btn" id="incLotsBtn">+</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Initial Capital (₹)</label>
+                    <input type="number" id="capital" value="500000" step="50000">
+                </div>
+            </div>
+
+            <!-- 2. Strategy Builder & Presets -->
+            <div class="glass-panel" style="padding: 20px;">
+                <div class="section-title">
+                    <span>Option Strategy Legs</span>
+                    <i data-lucide="layers" style="width: 18px; height: 18px; color: var(--accent-theme);"></i>
+                </div>
+
+                <!-- Presets selection -->
+                <div id="presetsSection">
+                    <div class="section-subtitle">Presets Quick Select</div>
+                    <div class="presets-grid">
+                        <button class="preset-btn" data-preset="straddle">Short Straddle</button>
+                        <button class="preset-btn" data-preset="strangle">Short Strangle</button>
+                        <button class="preset-btn" data-preset="condor">Iron Condor</button>
+                        <button class="preset-btn" data-preset="bullcall">Bull Call Spread</button>
+                    </div>
+                </div>
+
+                <div id="legsSection">
+                    <div class="section-subtitle" style="margin-top: 16px;">Strategy Legs</div>
+                    <div class="legs-container" id="legsContainer">
+                        <!-- Legs will be added dynamically by app.js -->
+                    </div>
+
+                    <button class="add-leg-btn" id="addLegBtn">
+                        <i data-lucide="plus" style="width: 16px; height: 16px;"></i>
+                        <span>Add Leg</span>
+                    </button>
+                </div>
+
+                <!-- EMA Crossover strategy indicator -->
+                <div id="emaSignalIndicator" style="display: none; padding: 12px; background: rgba(234, 179, 8, 0.06); border: 1px dashed rgba(234, 179, 8, 0.25); border-radius: 10px; font-size: 12px; color: #f59e0b; line-height: 1.4; margin-top: 10px;">
+                    <span style="font-weight: 700; display: block; margin-bottom: 4px; color: #fbbf24;">EMA Crossover Active</span>
+                    Crossover signals automatically trigger trades:
+                    <ul style="margin-left: 16px; margin-top: 4px;">
+                        <li><strong>Bullish Cross</strong>: Buys selected CE (Call)</li>
+                        <li><strong>Bearish Cross</strong>: Buys selected PE (Put)</li>
+                    </ul>
+                    Manual leg builder is disabled.
+                </div>
+            </div>
+
+            <!-- 3. Risk Management -->
+            <div class="glass-panel" style="padding: 20px;">
+                <div class="section-title">
+                    <span>Risk Management</span>
+                    <i data-lucide="shield-alert" style="width: 18px; height: 18px; color: var(--accent-theme);"></i>
+                </div>
+
+                <!-- Individual Leg Stop Loss & Target -->
+                <div class="input-row">
+                    <div class="form-group">
+                        <label>Leg Stop Loss</label>
+                        <select id="slType">
+                            <option value="NONE" selected>No SL</option>
+                            <option value="PERCENT">Percentage (%)</option>
+                            <option value="POINTS">Points (₹)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Value</label>
+                        <input type="number" id="slVal" value="25" min="1">
+                    </div>
+                </div>
+
+                <div class="input-row">
+                    <div class="form-group">
+                        <label>Leg Target Profit</label>
+                        <select id="tpType">
+                            <option value="NONE" selected>No Target</option>
+                            <option value="PERCENT">Percentage (%)</option>
+                            <option value="POINTS">Points (₹)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Value</label>
+                        <input type="number" id="tpVal" value="50" min="1">
+                    </div>
+                </div>
+
+                <button class="btn-primary" id="runBacktestBtn" style="margin-top: 12px;">
+                    <i data-lucide="play" style="width: 18px; height: 18px;"></i>
+                    <span>Execute Backtest</span>
+                </button>
+            </div>
+
+        </aside>
+
+        <!-- Main Dashboard Content (Right Column) -->
+        <main class="results-dashboard">
+            
+            <!-- Welcome Panel (Showed before backtest is executed) -->
+            <section class="glass-panel welcome-panel" id="welcomePanel">
+                <i data-lucide="trending-up" class="welcome-icon"></i>
+                <h2 class="welcome-title">Ready for Simulation</h2>
+                <p class="welcome-desc">
+                    Configure your options strategy parameters, select an underlying index (Nifty 50 or Bank Nifty), build your custom options legs or choose a preset, and click "Execute Backtest" to begin the simulation.
+                </p>
+                <div style="display: flex; gap: 12px; margin-top: 8px;">
+                    <span class="index-pill" style="opacity: 0.8;"><i data-lucide="zap" style="width: 14px; height: 14px;"></i> Black-Scholes Pricing</span>
+                    <span class="index-pill" style="opacity: 0.8;"><i data-lucide="calendar" style="width: 14px; height: 14px;"></i> 2024 - 2026 Daily Feed</span>
+                    <span class="index-pill" style="opacity: 0.8;"><i data-lucide="bar-chart-2" style="width: 14px; height: 14px;"></i> 15-Min Ticks</span>
+                </div>
+            </section>
+
+            <!-- Dashboard Analytics Panel (Hidden until backtest executes) -->
+            <section id="resultsPanel" style="display: none; flex-direction: column; gap: 24px;">
+                
+                <!-- Metrics Grid -->
+                <div class="metrics-row">
+                    <div class="glass-panel metric-card positive" id="cardTotalPnL">
+                        <span class="metric-label">Net Profit / Loss</span>
+                        <span class="metric-val positive" id="valTotalPnL">₹0.00</span>
+                        <span class="metric-sub" id="valRoi">ROI: 0.00%</span>
+                    </div>
+                    <div class="glass-panel metric-card neutral" id="cardWinRate">
+                        <span class="metric-label">Win Rate</span>
+                        <span class="metric-val" id="valWinRate">0.00%</span>
+                        <span class="metric-sub" id="valRatio">Win/Loss Days: 0/0</span>
+                    </div>
+                    <div class="glass-panel metric-card negative" id="cardDrawdown">
+                        <span class="metric-label">Max Drawdown</span>
+                        <span class="metric-val negative" id="valDrawdown">0.00%</span>
+                        <span class="metric-sub" id="valSharpe">Sharpe Ratio: 0.00</span>
+                    </div>
+                    <div class="glass-panel metric-card neutral" id="cardExpectancy">
+                        <span class="metric-label">Stats Factor</span>
+                        <span class="metric-val" id="valExpectancy">₹0.00</span>
+                        <span class="metric-sub" id="valProfitFactor">Profit Factor: 0.00</span>
+                    </div>
+                </div>
+
+                <!-- Charts Container Grid -->
+                <div class="charts-grid">
+                    
+                    <!-- Equity Curve & Historical Closes -->
+                    <div class="glass-panel chart-panel">
+                        <div class="chart-header">
+                            <span class="chart-title">Equity Curve (Growth of Capital)</span>
+                            <i data-lucide="trending-up" style="width: 16px; height: 16px; color: var(--accent-theme);"></i>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="equityCurveChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Spot Price & EMA indicator Chart -->
+                    <div class="glass-panel chart-panel" id="spotChartPanel">
+                        <div class="chart-header">
+                            <span class="chart-title">Underlying Spot & EMA Crossover</span>
+                            <i data-lucide="bar-chart-2" style="width: 16px; height: 16px; color: var(--accent-theme);"></i>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="spotEmaChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Options Strategy Payoff Diagram -->
+                    <div class="glass-panel chart-panel">
+                        <div class="chart-header">
+                            <span class="chart-title">Payoff Profile (At Expiry)</span>
+                            <i data-lucide="line-chart" style="width: 16px; height: 16px; color: var(--accent-theme);"></i>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="payoffChart"></canvas>
+                        </div>
+                        <div class="payoff-control">
+                            <label for="spotSlider">Settle Index Spot (₹):</label>
+                            <input type="range" id="spotSlider" style="flex: 1;" min="21000" max="23000" value="22000">
+                            <span id="spotSliderVal" style="font-weight: 700; width: 80px; text-align: right;">22,000</span>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Tabs & Logs Panel -->
+                <div class="glass-panel trade-log-panel">
+                    
+                    <div class="tabs-container">
+                        <button class="tab-btn active" data-tab="tradeLog">Detailed Trade Logs</button>
+                        <button class="tab-btn" data-tab="monthlyHeatmap">Monthly Performance Grid</button>
+                    </div>
+
+                    <!-- Trade Log Tab -->
+                    <div id="tabContent_tradeLog">
+                        <div class="table-wrapper">
+                            <table id="tradeLogTable">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Entry Spot (₹)</th>
+                                        <th>Exit Spot (₹)</th>
+                                        <th>Leg Positions</th>
+                                        <th>Net P&L (₹)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Log rows filled dynamically -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Monthly Heatmap Tab -->
+                    <div id="tabContent_monthlyHeatmap" style="display: none;">
+                        <div id="heatmapContainer" style="display: flex; flex-direction: column; gap: 16px; padding: 10px 0;">
+                            <!-- Dynamically generated monthly grid cards -->
+                        </div>
+                    </div>
+
+                </div>
+
+            </section>
+
+        </main>
+
+    </div>
+
+    <!-- Scripts -->
+    <script src="real-data.js?v=6"></script>
+    <script src="mock-data.js"></script>
+    <script src="backtest-engine.js?v=6"></script>
+    <script src="app.js?v=7"></script>
+</body>
+</html>
