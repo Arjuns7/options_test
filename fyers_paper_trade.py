@@ -43,6 +43,12 @@ STOP_LOSS_PCT = 0.15                      # 15% Stop Loss (Optimal)
 TARGET_PROFIT_PCT = 0.60                  # 60% Target Profit (Optimal)
 ADX_FILTER_THRESHOLD = 25                 # ADX > 25 Trend Strength Filter
 
+# --- Absolute File Paths ---
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+ACCESS_TOKEN_FILE = os.path.join(BASE_DIR, "access_token.txt")
+REFRESH_TOKEN_FILE = os.path.join(BASE_DIR, "refresh_token.txt")
+LOG_FILE = os.path.join(BASE_DIR, "fyers_paper_trades.csv")
+
 # --- Initialize Fyers Client as Global Variable ---
 fyers = None
 
@@ -315,10 +321,10 @@ def exchange_auth_code_for_tokens(auth_code):
             refresh_token = response.get('refresh_token')
             
             # Save locally
-            with open("access_token.txt", "w") as f:
+            with open(ACCESS_TOKEN_FILE, "w") as f:
                 f.write(access_token)
             if refresh_token:
-                with open("refresh_token.txt", "w") as f:
+                with open(REFRESH_TOKEN_FILE, "w") as f:
                     f.write(refresh_token)
                     
             ACCESS_TOKEN = access_token
@@ -335,18 +341,15 @@ def exchange_auth_code_for_tokens(auth_code):
 def initialize_fyers_session():
     global fyers, ACCESS_TOKEN, session_authorized
     
-    access_token_file = "access_token.txt"
-    refresh_token_file = "refresh_token.txt"
-    
     access_token = None
     refresh_token = None
     
-    if os.path.exists(access_token_file):
-        with open(access_token_file, "r") as f:
+    if os.path.exists(ACCESS_TOKEN_FILE):
+        with open(ACCESS_TOKEN_FILE, "r") as f:
             access_token = f.read().strip()
             
-    if os.path.exists(refresh_token_file):
-        with open(refresh_token_file, "r") as f:
+    if os.path.exists(REFRESH_TOKEN_FILE):
+        with open(REFRESH_TOKEN_FILE, "r") as f:
             refresh_token = f.read().strip()
             
     # Step 1: Verify current access token
@@ -509,7 +512,7 @@ def check_crossover(df):
 
 def log_virtual_trade(trade_details):
     """Write paper trading logs to a local CSV file."""
-    log_file = "fyers_paper_trades.csv"
+    log_file = LOG_FILE
     df = pd.DataFrame([trade_details])
     if not os.path.isfile(log_file):
         df.to_csv(log_file, index=False)
