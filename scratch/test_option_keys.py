@@ -1,0 +1,14 @@
+import os
+from fyers_apiv3 import fyersModel
+
+CLIENT_ID = "77QN6WHNT3-100"
+ACCESS_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOlsiZDoxIiwiZDoyIiwieDowIiwieDoxIiwieDoyIl0sImF0X2hhc2giOiJnQUFBQUFCcVR6RXk3OWpOSk1jOWJFUV9abkJUZWpVSm9DQ203SzAxdHJ0S0pNWDVuRGk2d0hLTmhuRk1VTWJlbG92WEh3QlBMR3ZNY2I2b3NwYmVfQkZLVmV1SzR4Q0VNYi1VS2Z5bUJzVXNmdGY0Q1BUUHlqbz0iLCJkaXNwbGF5X25hbWUiOiIiLCJvbXMiOiJLMSIsImhzbV9rZXkiOiJkY2JiMDk1YzBhM2ZhNmQzM2QxMTJjNGRlN2Y4MTM0YTVjODFiMThhMzQ0NTkwYTBiZDlkODRmOCIsImlzRGRwaUVuYWJsZWQiOiJOIiwiaXNNdGZFbmFibGVkIjoiTiIsImZ5X2lkIjoiRkFLMDQ0NTciLCJhcHBUeXBlIjoxMDAsImV4cCI6MTc4MzY0MzQwMCwiaWF0IjoxNzgzNTc0ODM0LCJpc3MiOiJhcGkuZnllcnMuaW4iLCJuYmYiOjE3ODM1NzQ4MzQsInN1YiI6ImFjY2Vzc190b2tlbiJ9._WiMy9iXVQONuEeZae86nos9vT3lyDfG22qgfz98Eow"
+
+fyers = fyersModel.FyersModel(client_id=CLIENT_ID, token=ACCESS_TOKEN)
+
+try:
+    symbol = "NSE:NIFTY2671423800CE"
+    res = fyers.quotes(data={"symbols": symbol})
+    print("Quotes response:", res)
+except Exception as e:
+    print("Error:", e)

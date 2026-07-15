@@ -5574,6 +5574,33 @@ const RealHistoricalData = {
     "close": 24398.7,
     "iv": 11.65,
     "riskFreeRate": 0.07
+  },
+  {
+    "date": "2026-07-08",
+    "open": 24259.55,
+    "high": 24300.0,
+    "low": 23805.2,
+    "close": 23882.05,
+    "iv": 14.68,
+    "riskFreeRate": 0.07
+  },
+  {
+    "date": "2026-07-09",
+    "open": 23928.95,
+    "high": 24134.7,
+    "low": 23925.7,
+    "close": 23962.8,
+    "iv": 13.36,
+    "riskFreeRate": 0.07
+  },
+  {
+    "date": "2026-07-10",
+    "open": 24124.7,
+    "high": 24228.45,
+    "low": 24120.35,
+    "close": 24210.05,
+    "iv": 12.22,
+    "riskFreeRate": 0.07
   }
 ],
     BANKNIFTY: [
@@ -11146,6 +11173,33 @@ const RealHistoricalData = {
     "low": 58110.1,
     "close": 58200.7,
     "iv": 14.56,
+    "riskFreeRate": 0.07
+  },
+  {
+    "date": "2026-07-08",
+    "open": 57918.25,
+    "high": 58075.6,
+    "low": 56549.4,
+    "close": 56742.6,
+    "iv": 18.35,
+    "riskFreeRate": 0.07
+  },
+  {
+    "date": "2026-07-09",
+    "open": 56871.0,
+    "high": 57464.2,
+    "low": 56867.3,
+    "close": 57252.45,
+    "iv": 16.7,
+    "riskFreeRate": 0.07
+  },
+  {
+    "date": "2026-07-10",
+    "open": 57592.5,
+    "high": 58251.95,
+    "low": 57576.7,
+    "close": 58041.45,
+    "iv": 15.28,
     "riskFreeRate": 0.07
   }
 ]

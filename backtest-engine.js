@@ -315,22 +315,51 @@ const BacktestEngine = (function() {
         const exitTick = timeToTickIdx(exitTimeStr);
 
         if (signalMode === 'EMA_CROSS_15MIN') {
+            // Check if we have actual intraday data
+            const realIntraday = typeof window !== 'undefined' ? window.RealIntradayData : (typeof global !== 'undefined' ? global.RealIntradayData : null);
+
             // Flatten all ticks in fullRecords
             const allTicks = [];
             for (let d = 0; d < fullRecords.length; d++) {
                 const record = fullRecords[d];
-                const spotTicksData = generateIntradayTicks(record.open, record.high, record.low, record.close, d);
-                const spots = spotTicksData.ticks;
-                for (let t = 0; t < 25; t++) {
-                    allTicks.push({
-                        date: record.date,
-                        tickIdx: t,
-                        spot: spots[t],
-                        iv: record.iv / 100,
-                        r: record.riskFreeRate,
-                        dayIdx: d,
-                        record: record
+                
+                // Try to find real intraday ticks for this date
+                let dayTicks = null;
+                if (isReal && realIntraday && realIntraday[indexName.toUpperCase()]) {
+                    const ticksForDay = realIntraday[indexName.toUpperCase()].filter(t => t.date === record.date);
+                    if (ticksForDay && ticksForDay.length > 0) {
+                        dayTicks = ticksForDay.sort((a, b) => a.tickIdx - b.tickIdx);
+                    }
+                }
+                
+                if (dayTicks) {
+                    // Use real intraday candles!
+                    dayTicks.forEach(tick => {
+                        allTicks.push({
+                            date: record.date,
+                            tickIdx: tick.tickIdx,
+                            spot: tick.spot,
+                            iv: record.iv / 100,
+                            r: record.riskFreeRate,
+                            dayIdx: d,
+                            record: record
+                        });
                     });
+                } else {
+                    // Fall back to mathematically simulated ticks from daily OHLC
+                    const spotTicksData = generateIntradayTicks(record.open, record.high, record.low, record.close, d);
+                    const spots = spotTicksData.ticks;
+                    for (let t = 0; t < 25; t++) {
+                        allTicks.push({
+                            date: record.date,
+                            tickIdx: t,
+                            spot: spots[t],
+                            iv: record.iv / 100,
+                            r: record.riskFreeRate,
+                            dayIdx: d,
+                            record: record
+                        });
+                    }
                 }
             }
 

@@ -6,3 +6,9 @@ yarn-debug.log*
 yarn-error.log*
 .idea/
 .vscode/
+access_token.txt
+refresh_token.txt
+__pycache__/
+*.pyc
+*.csv
+*.log
