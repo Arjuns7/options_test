@@ -45,9 +45,17 @@ ADX_FILTER_THRESHOLD = 25                 # ADX > 25 Trend Strength Filter
 
 # --- Absolute File Paths ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-ACCESS_TOKEN_FILE = os.path.join(BASE_DIR, "access_token.txt")
-REFRESH_TOKEN_FILE = os.path.join(BASE_DIR, "refresh_token.txt")
-LOG_FILE = os.path.join(BASE_DIR, "fyers_paper_trades.csv")
+TOKEN_DIR = os.environ.get("FYERS_TOKEN_DIR", BASE_DIR)
+if not os.path.exists(TOKEN_DIR):
+    try:
+        os.makedirs(TOKEN_DIR, exist_ok=True)
+    except Exception as e:
+        print(f"⚠️ Error creating token directory {TOKEN_DIR}: {e}")
+        TOKEN_DIR = BASE_DIR
+
+ACCESS_TOKEN_FILE = os.path.join(TOKEN_DIR, "access_token.txt")
+REFRESH_TOKEN_FILE = os.path.join(TOKEN_DIR, "refresh_token.txt")
+LOG_FILE = os.path.join(TOKEN_DIR, "fyers_paper_trades.csv")
 
 # --- Initialize Fyers Client as Global Variable ---
 fyers = None
