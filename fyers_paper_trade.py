@@ -362,8 +362,10 @@ def initialize_fyers_session():
                 ACCESS_TOKEN = access_token
                 session_authorized = True
                 return True
-        except Exception:
-            pass
+            else:
+                print(f"⚠️ Quotes check returned non-200 response: {res}")
+        except Exception as e:
+            print(f"⚠️ Quotes check failed with exception: {e}")
             
     # Step 2: Attempt auto-refresh via refresh_token
     if refresh_token and FYERS_PIN:
