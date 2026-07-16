@@ -1,1 +1,1 @@
-web: python fyers_paper_trade.py
+web: python -u fyers_paper_trade.py

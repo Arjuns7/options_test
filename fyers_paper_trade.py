@@ -364,16 +364,25 @@ def initialize_fyers_session():
     if access_token:
         fyers = fyersModel.FyersModel(client_id=CLIENT_ID, token=access_token, log_path=os.getcwd())
         try:
-            res = fyers.quotes(data={'symbols': INDEX_SYMBOL})
-            if res and res.get('code') == 200:
+            # Use history call to verify full token authorization validity
+            from_date = (datetime.today() - timedelta(days=2)).strftime('%Y-%m-%d')
+            res = fyers.history(data={
+                "symbol": INDEX_SYMBOL,
+                "resolution": "15",
+                "date_format": "1",
+                "range_from": from_date,
+                "range_to": datetime.today().strftime('%Y-%m-%d'),
+                "cont_flag": "1"
+            })
+            if res and res.get('s') == 'ok':
                 print("✅ Found active and valid Fyers session token.")
                 ACCESS_TOKEN = access_token
                 session_authorized = True
                 return True
             else:
-                print(f"⚠️ Quotes check returned non-200 response: {res}")
+                print(f"⚠️ Session validation returned error response: {res}")
         except Exception as e:
-            print(f"⚠️ Quotes check failed with exception: {e}")
+            print(f"⚠️ Session validation failed with exception: {e}")
             
     # Step 2: Attempt auto-refresh via refresh_token
     if refresh_token and FYERS_PIN:
