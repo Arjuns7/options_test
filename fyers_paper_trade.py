@@ -6,7 +6,7 @@ import threading
 import urllib.request
 import urllib.parse
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from fyers_apiv3 import fyersModel
 
@@ -26,7 +26,7 @@ def send_telegram_message(message):
     
     req = urllib.request.Request(url, data=data, headers={'Content-Type': 'application/x-www-form-urlencoded'})
     try:
-        with urllib.request.urlopen(req) as res:
+        with urllib.request.urlopen(req, timeout=10) as res:
             res.read()
     except Exception as e:
         print(f"⚠️ Failed to send Telegram alert: {e}")
@@ -689,7 +689,8 @@ last_init_date = None
 
 while True:
     try:
-        now = datetime.now()
+        # Force time calculation to be in Indian Standard Time (IST) regardless of server location
+        now = datetime.now(timezone(timedelta(hours=5, minutes=30))).replace(tzinfo=None)
         
         # Daily Session Check/Refresh (runs every day at 8:30 AM)
         current_date = now.strftime('%Y-%m-%d')
