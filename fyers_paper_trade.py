@@ -683,9 +683,10 @@ while builder is None:
         print("⚠️ Could not fetch warmup candles. Retrying in 10 seconds...")
         time.sleep(10)
 
-send_telegram_message("🚀 *Fyers 15-Min EMA Paper Trading Engine Started* successfully with local candle building!")
+send_telegram_message("🚀 *Fyers Instant Tick EMA Paper Trading Engine Started* successfully!")
 
 last_init_date = None
+previous_spot = None
 
 while True:
     try:
@@ -730,23 +731,23 @@ while True:
                 print("✅ Successfully re-synced Local Candle Builder.")
             continue
             
-        # 3. If a candle completes, check for crossover signals
-        signal = 'NONE'
+        # 3. Calculate current 9 EMA & check Instant Tick Crossover
+        df_ind = calculate_indicators(builder.df)
+        current_ema = round(df_ind['EMA'].iloc[-1], 2)
+        
+        instant_signal = 'NONE'
+        if previous_spot is not None:
+            if previous_spot <= current_ema and current_spot > current_ema:
+                instant_signal = 'BULLISH'
+                print(f"⚡ INSTANT TICK CROSSOVER: Nifty Spot (₹{current_spot}) crossed ABOVE 9 EMA (₹{current_ema})! Triggering BULLISH Entry!")
+            elif previous_spot >= current_ema and current_spot < current_ema:
+                instant_signal = 'BEARISH'
+                print(f"⚡ INSTANT TICK CROSSOVER: Nifty Spot (₹{current_spot}) crossed BELOW 9 EMA (₹{current_ema})! Triggering BEARISH Entry!")
+                
+        previous_spot = current_spot
+        
         if completed_candle:
-            df = builder.df
-            df = calculate_indicators(df)
-            raw_signal = check_crossover(df)
-            adx_val = df['ADX'].iloc[-1]
-            
-            if raw_signal != 'NONE':
-                if pd.isna(adx_val) or adx_val <= ADX_FILTER_THRESHOLD:
-                    print(f"🔒 Candle Completed: {completed_candle['datetime'].strftime('%H:%M')} | Spot: {completed_candle['close']} | EMA: {round(df['EMA'].iloc[-1], 2)} | Signal {raw_signal} BLOCKED by ADX ({round(adx_val, 2)} <= {ADX_FILTER_THRESHOLD})")
-                    signal = 'NONE'
-                else:
-                    print(f"🔒 Candle Completed: {completed_candle['datetime'].strftime('%H:%M')} | Spot: {completed_candle['close']} | EMA: {round(df['EMA'].iloc[-1], 2)} | Signal: {raw_signal} (ADX: {round(adx_val, 2)} > {ADX_FILTER_THRESHOLD})")
-                    signal = raw_signal
-            else:
-                print(f"🔒 Candle Completed: {completed_candle['datetime'].strftime('%H:%M')} | Spot: {completed_candle['close']} | EMA: {round(df['EMA'].iloc[-1], 2)} | Signal: NONE (ADX: {round(adx_val, 2) if not pd.isna(adx_val) else 0.0})")
+            print(f"🔒 Candle Completed: {completed_candle['datetime'].strftime('%H:%M')} | Spot: {completed_candle['close']} | EMA: {current_ema}")
             
         # 4. Manage Active Paper Trade
         if active_trade:
@@ -793,8 +794,9 @@ while True:
                 
                 active_trade = None
                 
-        # 5. Check for Crossover Signals (only if no active trade)
-        elif signal != 'NONE' and now.hour < 15:
+        # 5. Check for Instant Crossover Signals (only if no active trade)
+        elif instant_signal != 'NONE' and now.hour < 15:
+            signal = instant_signal
             option_type = 'CE' if signal == 'BULLISH' else 'PE'
             
             # Fetch real contract details
