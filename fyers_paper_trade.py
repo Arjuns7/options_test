@@ -374,7 +374,7 @@ def initialize_fyers_session():
                 "range_to": datetime.today().strftime('%Y-%m-%d'),
                 "cont_flag": "1"
             })
-            if res and res.get('s') == 'ok':
+            if res and (res.get('s') in ['ok', 'no_data']) and res.get('code') == 200:
                 print("✅ Found active and valid Fyers session token.")
                 ACCESS_TOKEN = access_token
                 session_authorized = True
@@ -407,7 +407,7 @@ def initialize_fyers_session():
                 res_data = res.json()
                 if res_data.get('s') == 'ok':
                     new_access_token = res_data.get('access_token')
-                    with open(access_token_file, "w") as f:
+                    with open(ACCESS_TOKEN_FILE, "w") as f:
                         f.write(new_access_token)
                     ACCESS_TOKEN = new_access_token
                     fyers = fyersModel.FyersModel(client_id=CLIENT_ID, token=new_access_token, log_path=os.getcwd())
