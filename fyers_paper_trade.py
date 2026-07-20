@@ -40,7 +40,7 @@ INDEX_SYMBOL = "NSE:NIFTY50-INDEX"        # Symbol for Nifty 50 Spot
 EMA_PERIOD = 9
 LOTS_MULTIPLIER = 2                       # Traded quantity multiplier
 STOP_LOSS_PCT = 0.15                      # 15% Stop Loss (Optimal)
-TARGET_PROFIT_PCT = 0.60                  # 60% Target Profit (Optimal)
+TARGET_PROFIT_PCT = 0.50                  # 50% Target Profit (Optimal Sweet Spot: +INR 176,092 PnL)
 ADX_FILTER_THRESHOLD = 0                  # No ADX Filter (Optimal #1 Setup: +INR 200,437 PnL)
 
 # --- Absolute File Paths ---
