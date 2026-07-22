@@ -41,6 +41,8 @@ EMA_PERIOD = 9
 LOTS_MULTIPLIER = 2                       # Traded quantity multiplier
 STOP_LOSS_PCT = 0.15                      # 15% Stop Loss (Optimal)
 TARGET_PROFIT_PCT = 0.30                  # 30% Target Profit
+TRAILING_TARGET_ACTIVE = True             # Enable Trailing Target (Profit Lock + Ride)
+SPOT_BUFFER = 4.0                         # 4-Point Spot Breakout Buffer to filter micro-whipsaws
 ADX_FILTER_THRESHOLD = 0                  # No ADX Filter (Optimal #1 Setup: +INR 200,437 PnL)
 
 # --- Absolute File Paths ---
@@ -731,18 +733,24 @@ while True:
                 print("✅ Successfully re-synced Local Candle Builder.")
             continue
             
-        # 3. Calculate current 9 EMA & check Instant Tick Crossover
+        # 3. Calculate current 9 EMA & check Instant Tick Crossover with Breakout Buffer
         df_ind = calculate_indicators(builder.df)
         current_ema = round(df_ind['EMA'].iloc[-1], 2)
         
         instant_signal = 'NONE'
         if previous_spot is not None:
-            if previous_spot <= current_ema and current_spot > current_ema:
+            if previous_spot <= current_ema and current_spot >= (current_ema + SPOT_BUFFER):
                 instant_signal = 'BULLISH'
-                print(f"⚡ INSTANT TICK CROSSOVER: Nifty Spot (₹{current_spot}) crossed ABOVE 9 EMA (₹{current_ema})! Triggering BULLISH Entry!")
-            elif previous_spot >= current_ema and current_spot < current_ema:
+                if not active_trade:
+                    print(f"⚡ INSTANT TICK CROSSOVER: Nifty Spot (₹{current_spot}) crossed ABOVE 9 EMA (₹{current_ema}) with {SPOT_BUFFER}pt buffer! Triggering BULLISH Entry!")
+                else:
+                    print(f"⚡ INSTANT TICK CROSSOVER: Nifty Spot (₹{current_spot}) crossed ABOVE 9 EMA (₹{current_ema}) with {SPOT_BUFFER}pt buffer (Skipped: Active Trade open)")
+            elif previous_spot >= current_ema and current_spot <= (current_ema - SPOT_BUFFER):
                 instant_signal = 'BEARISH'
-                print(f"⚡ INSTANT TICK CROSSOVER: Nifty Spot (₹{current_spot}) crossed BELOW 9 EMA (₹{current_ema})! Triggering BEARISH Entry!")
+                if not active_trade:
+                    print(f"⚡ INSTANT TICK CROSSOVER: Nifty Spot (₹{current_spot}) crossed BELOW 9 EMA (₹{current_ema}) with {SPOT_BUFFER}pt buffer! Triggering BEARISH Entry!")
+                else:
+                    print(f"⚡ INSTANT TICK CROSSOVER: Nifty Spot (₹{current_spot}) crossed BELOW 9 EMA (₹{current_ema}) with {SPOT_BUFFER}pt buffer (Skipped: Active Trade open)")
                 
         previous_spot = current_spot
         
@@ -764,21 +772,46 @@ while True:
             # Print live trade status update
             pnl_sign = '+' if pnl >= 0 else ''
             print(f"📊 [ACTIVE] Spot: ₹{current_spot} | Premium: ₹{round(current_premium, 2)} | P&L: {pnl_sign}₹{round(pnl, 2)}")
+            
+            # Track peak premium touched during this trade
+            if 'max_premium' not in active_trade:
+                active_trade['max_premium'] = max(active_trade['entry_premium'], current_premium)
+            elif current_premium > active_trade['max_premium']:
+                active_trade['max_premium'] = current_premium
+                
+            peak_pnl_pct = (active_trade['max_premium'] - active_trade['entry_premium']) / active_trade['entry_premium']
+            
             sl_limit = active_trade['entry_premium'] * (1 - STOP_LOSS_PCT)
             tp_limit = active_trade['entry_premium'] * (1 + TARGET_PROFIT_PCT)
             
             close_reason = None
-            if current_premium <= sl_limit:
-                close_reason = "STOP_LOSS_HIT"
-            elif current_premium >= tp_limit:
-                close_reason = "TARGET_PROFIT_HIT"
-            elif now.hour == 15 and now.minute >= 15:
+            locked_sl_limit = None
+            
+            if TRAILING_TARGET_ACTIVE and peak_pnl_pct >= TARGET_PROFIT_PCT:
+                # Locked SL = peak_pnl_pct - 15%, minimum lock is +15%
+                locked_sl_pct = peak_pnl_pct - 0.15
+                locked_sl_pct = max(0.15, locked_sl_pct)
+                locked_sl_limit = active_trade['entry_premium'] * (1 + locked_sl_pct)
+                
+                if current_premium <= locked_sl_limit:
+                    close_reason = "TARGET_TRAILING_EXIT"
+                    # Capture exact exit P&L at the locked level
+                    pnl = (locked_sl_limit - active_trade['entry_premium']) * active_trade['qty']
+            else:
+                # Before target reached, check standard SL / TP
+                if current_premium <= sl_limit:
+                    close_reason = "STOP_LOSS_HIT"
+                elif current_premium >= tp_limit and not TRAILING_TARGET_ACTIVE:
+                    close_reason = "TARGET_PROFIT_HIT"
+                    
+            if now.hour == 15 and now.minute >= 15:
                 close_reason = "DAILY_SQUARE_OFF"
             
             if close_reason:
                 active_trade['exit_time'] = now.strftime('%Y-%m-%d %H:%M:%S')
                 active_trade['exit_spot'] = current_spot
-                active_trade['exit_premium'] = round(current_premium, 2)
+                exit_price = locked_sl_limit if close_reason == "TARGET_TRAILING_EXIT" else current_premium
+                active_trade['exit_premium'] = round(exit_price, 2)
                 active_trade['pnl'] = round(pnl, 2)
                 active_trade['status'] = close_reason
                 log_virtual_trade(active_trade)
@@ -788,7 +821,7 @@ while True:
                        f"*Index*: NIFTY 50\n"
                        f"*Contract*: {active_trade['symbol']} (Expiry: {active_trade['expiry_date']})\n"
                        f"*Spot Price*: ₹{current_spot}\n"
-                       f"*Exit Premium*: ₹{round(current_premium, 2)}\n"
+                       f"*Exit Premium*: ₹{round(exit_price, 2)}\n"
                        f"*Net P&L*: **₹{round(pnl, 2)}** (Simulated)")
                 send_telegram_message(msg)
                 
