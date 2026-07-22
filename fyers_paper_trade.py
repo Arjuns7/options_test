@@ -42,7 +42,7 @@ LOTS_MULTIPLIER = 2                       # Traded quantity multiplier
 STOP_LOSS_PCT = 0.15                      # 15% Stop Loss (Optimal)
 TARGET_PROFIT_PCT = 0.30                  # 30% Target Profit
 TRAILING_TARGET_ACTIVE = True             # Enable Trailing Target (Profit Lock + Ride)
-SPOT_BUFFER = 4.0                         # 4-Point Spot Breakout Buffer to filter micro-whipsaws
+SPOT_BUFFER = 2.0                         # 2-Point Spot Breakout Buffer to filter micro-whipsaws
 ADX_FILTER_THRESHOLD = 0                  # No ADX Filter (Optimal #1 Setup: +INR 200,437 PnL)
 
 # --- Absolute File Paths ---
