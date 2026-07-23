@@ -738,7 +738,9 @@ while True:
         current_ema = round(df_ind['EMA'].iloc[-1], 2)
         
         instant_signal = 'NONE'
-        if previous_spot is not None:
+        is_market_active = (9 <= now.hour < 15) and not (now.hour == 9 and now.minute < 15)
+        
+        if is_market_active and previous_spot is not None:
             if previous_spot <= current_ema and current_spot >= (current_ema + SPOT_BUFFER):
                 instant_signal = 'BULLISH'
                 if not active_trade:
@@ -827,8 +829,8 @@ while True:
                 
                 active_trade = None
                 
-        # 5. Check for Instant Crossover Signals (only if no active trade)
-        elif instant_signal != 'NONE' and now.hour < 15:
+        # 5. Check for Instant Crossover Signals (only during active market hours: 9:15 AM to 3:00 PM IST)
+        elif instant_signal != 'NONE' and is_market_active:
             signal = instant_signal
             option_type = 'CE' if signal == 'BULLISH' else 'PE'
             
