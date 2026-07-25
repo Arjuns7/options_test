@@ -10,9 +10,10 @@ from datetime import datetime, timedelta, timezone
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from fyers_apiv3 import fyersModel
 
-# --- Telegram Credentials ---
+# --- Telegram & Discord Credentials ---
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
+DISCORD_WEBHOOK_URL = os.environ.get("DISCORD_WEBHOOK_URL")
 
 def send_telegram_message(message):
     if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
@@ -251,6 +252,76 @@ def get_result_html(is_success, message):
     </div>
 </body>
 </html>"""
+
+def get_trade_summary():
+    """Reads LOG_FILE and returns total_pnl, today_pnl, win_rate, and list of trades."""
+    if not os.path.exists(LOG_FILE):
+        return 0.0, 0.0, 0.0, []
+    try:
+        df = pd.read_csv(LOG_FILE)
+        if df.empty:
+            return 0.0, 0.0, 0.0, []
+            
+        total_pnl = float(df['pnl'].sum())
+        
+        # Filter today's trades
+        today_str = datetime.now(timezone(timedelta(hours=5, minutes=30))).strftime('%Y-%m-%d')
+        # Standardize date formats in log
+        df['entry_str'] = df['entry_time'].astype(str)
+        # Match either 'YYYY-MM-DD' or 'DD-MM-YYYY' styles
+        today_str_alt = datetime.now(timezone(timedelta(hours=5, minutes=30))).strftime('%d-%m-%Y')
+        today_df = df[df['entry_str'].str.contains(today_str) | df['entry_str'].str.contains(today_str_alt)]
+        today_pnl = float(today_df['pnl'].sum()) if not today_df.empty else 0.0
+        
+        total_trades = len(df)
+        wins = len(df[df['pnl'] > 0])
+        win_rate = round((wins / total_trades) * 100, 1) if total_trades > 0 else 0.0
+        
+        trades_list = df.to_dict(orient='records')
+        return round(total_pnl, 2), round(today_pnl, 2), win_rate, trades_list
+    except Exception as e:
+        print(f"⚠️ Error reading trade log CSV: {e}")
+        return 0.0, 0.0, 0.0, []
+
+def send_discord_summary(total_pnl, today_pnl, win_rate, total_trades, wins, losses):
+    if not DISCORD_WEBHOOK_URL:
+        return
+    
+    today_str = datetime.now(timezone(timedelta(hours=5, minutes=30))).strftime('%A, %B %d, %Y')
+    status = "PROFIT 🟢" if today_pnl >= 0 else "LOSS 🔴"
+    color = 3066993 if today_pnl >= 0 else 15158332 # Green or Red
+    
+    payload = {
+        "embeds": [
+            {
+                "title": f"📊 Daily P&L Summary - {today_str}",
+                "color": color,
+                "fields": [
+                    {"name": "Status", "value": f"**{status}**", "inline": True},
+                    {"name": "Today's P&L", "value": f"**₹{today_pnl:,.2f}**", "inline": True},
+                    {"name": "Win Rate", "value": f"{win_rate}% ({wins}W / {losses}L)", "inline": True},
+                    {"name": "Total Trades", "value": str(total_trades), "inline": True},
+                    {"name": "Cumulative P&L", "value": f"₹{total_pnl:,.2f}", "inline": True}
+                ],
+                "footer": {
+                    "text": "Fyers Algo Trading Bot"
+                }
+            }
+        ]
+    }
+    
+    data = json.dumps(payload).encode("utf-8")
+    req = urllib.request.Request(
+        DISCORD_WEBHOOK_URL,
+        data=data,
+        headers={'Content-Type': 'application/json', 'User-Agent': 'Mozilla/5.0'}
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=10) as res:
+            res.read()
+        print("✅ Daily P&L summary successfully sent to Discord.")
+    except Exception as e:
+        print(f"⚠️ Failed to send Discord notification: {e}")
 
 # --- Background HTTP Health Check & Web Re-Authorization Server ---
 class HealthCheckHandler(BaseHTTPRequestHandler):
@@ -689,6 +760,7 @@ send_telegram_message("🚀 *Fyers Instant Tick EMA Paper Trading Engine Started
 
 last_init_date = None
 previous_spot = None
+last_discord_summary_date = None
 
 while True:
     try:
@@ -705,6 +777,26 @@ while True:
                 if not session_active:
                     time.sleep(10)
             last_init_date = current_date
+            
+        # Daily P&L Discord summary trigger (runs once a day at 15:30 IST / 03:30 PM)
+        if now.hour == 15 and now.minute >= 30 and last_discord_summary_date != current_date:
+            print("📊 Generating daily P&L summary for Discord...")
+            try:
+                total_pnl, today_pnl, win_rate, trades_list = get_trade_summary()
+                today_str = current_date
+                today_str_alt = now.strftime('%d-%m-%Y')
+                today_trades = [
+                    t for t in trades_list 
+                    if str(t.get('entry_time', '')).startswith(today_str) or 
+                       str(t.get('entry_time', '')).startswith(today_str_alt)
+                ]
+                wins = sum(1 for t in today_trades if float(t.get('pnl', 0.0)) > 0)
+                losses = sum(1 for t in today_trades if float(t.get('pnl', 0.0)) <= 0)
+                
+                send_discord_summary(total_pnl, today_pnl, win_rate, len(today_trades), wins, losses)
+                last_discord_summary_date = current_date
+            except Exception as e:
+                print(f"⚠️ Error generating Discord summary: {e}")
             
         # If we lost authorization, suspend loop until authorized via web portal
         if not session_authorized:
