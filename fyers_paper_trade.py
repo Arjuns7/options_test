@@ -524,8 +524,8 @@ threading.Thread(target=start_health_check_server, daemon=True).start()
 # --- Helper Functions ---
 def get_live_nifty_candles():
     """Fetch recent historical 15-minute candles to calculate the EMA."""
-    # Fetch last 8 days of history to ensure we have a good warm-up period for the 9 EMA and 50 EMA
-    from_date = (datetime.today() - timedelta(days=8)).strftime('%Y-%m-%d')
+    # Fetch last 5 days of history to ensure we have a good warm-up period for the 9 EMA and 15 EMA
+    from_date = (datetime.today() - timedelta(days=5)).strftime('%Y-%m-%d')
     data = {
         "symbol": INDEX_SYMBOL,
         "resolution": "15",
@@ -554,9 +554,9 @@ def get_live_nifty_candles():
 
 def calculate_indicators(df):
     """Calculate 9 EMA, 50 EMA, and 14-period Wilder's ADX on Nifty candles."""
-    # 1. Calculate 9 EMA and 50 EMA
+    # 1. Calculate 9 EMA and 15 EMA
     df['EMA'] = df['close'].ewm(span=EMA_PERIOD, adjust=False).mean()
-    df['EMA_50'] = df['close'].ewm(span=50, adjust=False).mean()
+    df['EMA_15'] = df['close'].ewm(span=15, adjust=False).mean()
     
     # 2. Calculate True Range (TR)
     df['h_l'] = df['high'] - df['low']
@@ -826,35 +826,35 @@ while True:
                 print("✅ Successfully re-synced Local Candle Builder.")
             continue
             
-        # 3. Calculate current 9 EMA / 50 EMA & check Instant Tick Crossover with Breakout Buffer
+        # 3. Calculate current 9 EMA / 15 EMA & check Instant Tick Crossover with Breakout Buffer
         df_ind = calculate_indicators(builder.df)
         current_ema = round(df_ind['EMA'].iloc[-1], 2)
-        current_ema_50 = round(df_ind['EMA_50'].iloc[-1], 2)
+        current_ema_15 = round(df_ind['EMA_15'].iloc[-1], 2)
         
         instant_signal = 'NONE'
         is_market_active = (9 <= now.hour < 15) and not (now.hour == 9 and now.minute < 15)
         
         if is_market_active and previous_spot is not None:
             if previous_spot <= current_ema and current_spot >= (current_ema + SPOT_BUFFER):
-                if current_spot > current_ema_50:
+                if current_spot > current_ema_15:
                     instant_signal = 'BULLISH'
                     if not active_trade:
-                        print(f"⚡ INSTANT TICK CROSSOVER: Nifty Spot (₹{current_spot}) crossed ABOVE 9 EMA (₹{current_ema}) with {SPOT_BUFFER}pt buffer! Trend is UPTREND (Spot > 50 EMA {current_ema_50}). Triggering BULLISH Entry!")
+                        print(f"⚡ INSTANT TICK CROSSOVER: Nifty Spot (₹{current_spot}) crossed ABOVE 9 EMA (₹{current_ema}) with {SPOT_BUFFER}pt buffer! Trend is UPTREND (Spot > 15 EMA {current_ema_15}). Triggering BULLISH Entry!")
                     else:
                         print(f"⚡ INSTANT TICK CROSSOVER: Nifty Spot (₹{current_spot}) crossed ABOVE 9 EMA (₹{current_ema}) with {SPOT_BUFFER}pt buffer (Skipped: Active Trade open)")
                 else:
                     if not active_trade:
-                        print(f"🚫 BLOCKED: BULLISH crossover ignored because Nifty Spot (₹{current_spot}) is below 50 EMA (₹{current_ema_50}) [Downtrend].")
+                        print(f"🚫 BLOCKED: BULLISH crossover ignored because Nifty Spot (₹{current_spot}) is below 15 EMA (₹{current_ema_15}) [Downtrend].")
             elif previous_spot >= current_ema and current_spot <= (current_ema - SPOT_BUFFER):
-                if current_spot < current_ema_50:
+                if current_spot < current_ema_15:
                     instant_signal = 'BEARISH'
                     if not active_trade:
-                        print(f"⚡ INSTANT TICK CROSSOVER: Nifty Spot (₹{current_spot}) crossed BELOW 9 EMA (₹{current_ema}) with {SPOT_BUFFER}pt buffer! Trend is DOWNTREND (Spot < 50 EMA {current_ema_50}). Triggering BEARISH Entry!")
+                        print(f"⚡ INSTANT TICK CROSSOVER: Nifty Spot (₹{current_spot}) crossed BELOW 9 EMA (₹{current_ema}) with {SPOT_BUFFER}pt buffer! Trend is DOWNTREND (Spot < 15 EMA {current_ema_15}). Triggering BEARISH Entry!")
                     else:
                         print(f"⚡ INSTANT TICK CROSSOVER: Nifty Spot (₹{current_spot}) crossed BELOW 9 EMA (₹{current_ema}) with {SPOT_BUFFER}pt buffer (Skipped: Active Trade open)")
                 else:
                     if not active_trade:
-                        print(f"🚫 BLOCKED: BEARISH crossover ignored because Nifty Spot (₹{current_spot}) is above 50 EMA (₹{current_ema_50}) [Uptrend].")
+                        print(f"🚫 BLOCKED: BEARISH crossover ignored because Nifty Spot (₹{current_spot}) is above 15 EMA (₹{current_ema_15}) [Uptrend].")
                 
         previous_spot = current_spot
         
