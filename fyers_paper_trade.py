@@ -32,7 +32,7 @@ def send_telegram_message(message):
     except Exception as e:
         print(f"⚠️ Failed to send Telegram alert: {e}")
 
-# --- Configuration ---
+# --- Configuration --- yes
 CLIENT_ID = "77QN6WHNT3-100"
 SECRET_ID = os.environ.get("FYERS_SECRET_ID", "DIJN19NKWM")
 FYERS_PIN = os.environ.get("FYERS_PIN")
